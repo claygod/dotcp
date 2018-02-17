@@ -12,7 +12,7 @@ import (
 	//"bufio"
 	"errors"
 	//"os"
-	"time"
+	//"time"
 )
 
 /*
@@ -25,7 +25,59 @@ type tcpServer struct {
 }
 
 /*
-total - current account balance.
+newTcpServer - create new tcpServer.
+
+func newTcpServer(network networkType, addr *net.TCPAddr) *tcpServer { // TCPAddr
+	//if _, err := strconv.Atoi() {
+	//	return nil
+	//}
+	ts := &tcpServer{
+		network:    string(network),
+		addr:       addr,
+		procedures: make(map[string]*procedure),
+	}
+	return ts
+}
+*/
+
+/*
+Server - create a new tcp server.
+*/
+func Server(network networkType) *tcpServer { // TCPAddr
+	ts := &tcpServer{
+		network:    string(network),
+		addr:       new(net.TCPAddr),
+		procedures: make(map[string]*procedure),
+	}
+	return ts
+}
+
+/*
+IP - set IP.
+*/
+func (t *tcpServer) IP(ip net.IP) *tcpServer {
+	t.addr.IP = ip
+	return t
+}
+
+/*
+Port - set Port.
+*/
+func (t *tcpServer) Port(port int) *tcpServer {
+	t.addr.Port = port
+	return t
+}
+
+/*
+Zone - set Zone.
+*/
+func (t *tcpServer) Zone(zone string) *tcpServer {
+	t.addr.Zone = zone
+	return t
+}
+
+/*
+Register - register handler.
 */
 func (t *tcpServer) Register(name string, method func(interface{}) []byte, getStruct func() interface{}) error {
 	if _, ok := t.procedures[name]; ok {
@@ -38,30 +90,6 @@ func (t *tcpServer) Register(name string, method func(interface{}) []byte, getSt
 		getStruct: getStruct,
 	}
 	return nil
-}
-
-/*
-procedure - stores the called function and the structure for the marshaling.
-*/
-type procedure struct {
-	name      string
-	method    func(interface{}) []byte
-	getStruct func() interface{}
-}
-
-/*
-newTcpServer - create new tcpServer.
-*/
-func newTcpServer(network networkType, addr *net.TCPAddr) *tcpServer { // TCPAddr
-	//if _, err := strconv.Atoi() {
-	//	return nil
-	//}
-	ts := &tcpServer{
-		network:    string(network),
-		addr:       addr,
-		procedures: make(map[string]*procedure),
-	}
-	return ts
 }
 
 /*
@@ -89,23 +117,48 @@ func (t *tcpServer) Start() {
 }
 
 func main() {
-	addr := &net.TCPAddr{
-		IP:   net.IPv4(127, 0, 0, 1), // use net.ParseCIDR for string
-		Port: 9999,
-		Zone: "", // IPv6 scoped addressing zone
-	}
-	s := newTcpServer(NetworkTsp, addr)
-	if s == nil {
-		log.Fatalf("Server not started")
-		return
-	}
-	s.Register("RGB", dummy, newRGB)
-	s.Register("YCbCr", dummy, newYCbCr)
+
+	//addr := &net.TCPAddr{
+	//	IP:   net.IPv4(127, 0, 0, 1), // use net.ParseCIDR for string
+	//	Port: 9999,
+	//	Zone: "", // IPv6 scoped addressing zone
+	//}
+	//s := newTcpServer(NetworkTsp, addr)
+	//if s == nil {
+	//	log.Fatalf("Server not started")
+	//	return
+	//}
+	s := Server(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+
+	s.Register("RGB", dummy1, newRGB)
+	s.Register("YCbCr", dummy2, newYCbCr)
+
 	s.Start()
 
-	fmt.Println("Start")
-	time.Sleep(10 * time.Millisecond)
-	client7()
+	fmt.Println(s.addr.String())
+
+	//fmt.Println("Start")
+
+	//client7()
+	//fmt.Println("------------------------------------------------------------")
+	//fmt.Println("------------------------------------------------------------")
+
+	var msg = []byte(`[
+		{"Method": "YCbCr", "Query": {"Y": 255, "Cb": 0, "Cr": -10}},
+		{"Method": "RGB",   "Query": {"R": 98, "G": 218, "B": 255, "X":0}}
+	]`)
+
+	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	c.Send(msg)
 
 	//time.Sleep(1 * time.Second)
+}
+
+/*
+procedure - stores the called function and the structure for the marshaling.
+*/
+type procedure struct {
+	name      string
+	method    func(interface{}) []byte
+	getStruct func() interface{}
 }

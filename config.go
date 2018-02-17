@@ -4,7 +4,14 @@ package main
 // Config
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
+import (
+	"time"
+)
+
 type networkType string
+
+const deadline time.Duration = 100 * time.Millisecond // millisecond
+const bufSize int = 1024
 
 // The network must be a TCP network name
 const (

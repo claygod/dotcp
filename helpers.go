@@ -9,19 +9,20 @@ import (
 	"fmt"
 	"log"
 	"net"
+	// "time"
 )
 
 func (t *tcpServer) handle(c net.Conn) {
 	fmt.Println("H1")
 	// получение сообщения
-	buf := make([]byte, 0, 100)
+	buf := make([]byte, 0)
 
 	for {
-		xx := make([]byte, 100)
+		xx := make([]byte, bufSize)
 		res, err := c.Read(xx)
 		fmt.Println("H3", res, err)
 		buf = append(buf, xx[:res]...)
-		if err != nil || res == 0 || res < 100 {
+		if err != nil || res < bufSize { // res == 0 ||
 			break
 		}
 
@@ -41,12 +42,15 @@ func (t *tcpServer) handle(c net.Conn) {
 
 	for _, item := range colors {
 		var dst interface{}
-
-		if p, ok := t.procedures[item.Method]; ok {
+		p, ok := t.procedures[item.Method]
+		if ok {
+			fmt.Println(" --- 100 ---")
 			dst = p.getStruct()
 		} else {
+			fmt.Println(" --- 200 ---")
 			break // To Do
 		}
+		fmt.Println(" --- 300 ---")
 		/*
 			switch c.Method {
 			case "RGB":
@@ -58,8 +62,12 @@ func (t *tcpServer) handle(c net.Conn) {
 		err := json.Unmarshal(item.Query, dst)
 		if err != nil {
 			log.Fatalln("error:", err)
+			fmt.Println(" --- 400 ---")
 		}
+		fmt.Println(" --- 500 ---")
+
 		fmt.Println(item.Method, dst)
+		p.method(dst)
 	}
 	fmt.Println(" ++++++++++++")
 	fmt.Println(" Сервер  пытается отправить клиенту:")
@@ -68,9 +76,11 @@ func (t *tcpServer) handle(c net.Conn) {
 	//c.Close()
 }
 
+/*
 func client7() {
 	// соединиться с сервером
 	c, err := net.Dial("tcp", "127.0.0.1:9999")
+
 	if err != nil {
 		fmt.Println(err, " !!")
 		return
@@ -95,12 +105,12 @@ func client7() {
 	fmt.Println(" Клиент  пытается получить:")
 
 	for {
-		xx := make([]byte, 100)
+		xx := make([]byte, bufSize )
 		res, err := c.Read(xx)
 		fmt.Println("H3", res, err)
 		buf = append(buf, xx[:res]...)
 
-		if err != nil || res == 0 || res < 100 {
+		if err != nil || res < bufSize  { // res == 0 ||
 			fmt.Println(" Клиент  получил:")
 			fmt.Println(res, err)
 			break
@@ -112,17 +122,25 @@ func client7() {
 	c.Close()
 	return
 }
-
+*/
 func handle1() []byte {
+	fmt.Println(" ++++ сработал хэндл 1 ++++")
 	return []byte{1, 1, 1}
 }
 
 func handle2() []byte {
+	fmt.Println(" ++++ сработал хэндл 2 ++++")
 	return []byte{2, 2, 2}
 }
 
-func dummy(interface{}) []byte {
-	return []byte{7, 7, 7}
+func dummy1(d interface{}) []byte {
+	fmt.Println(" ++++ сработал dummy 1 ++++", d)
+	return []byte{71, 71, 71}
+}
+
+func dummy2(d interface{}) []byte {
+	fmt.Println(" ++++ сработал dummy 2 ++++", d)
+	return []byte{72, 72, 72}
 }
 
 type Color struct {
