@@ -12,7 +12,9 @@ import (
 	//"bufio"
 	"errors"
 	//"os"
-	//"time"
+	"time"
+
+	"github.com/xeipuuv/gojsonschema"
 )
 
 /*
@@ -23,22 +25,6 @@ type tcpServer struct {
 	addr       *net.TCPAddr
 	procedures map[string]*procedure
 }
-
-/*
-newTcpServer - create new tcpServer.
-
-func newTcpServer(network networkType, addr *net.TCPAddr) *tcpServer { // TCPAddr
-	//if _, err := strconv.Atoi() {
-	//	return nil
-	//}
-	ts := &tcpServer{
-		network:    string(network),
-		addr:       addr,
-		procedures: make(map[string]*procedure),
-	}
-	return ts
-}
-*/
 
 /*
 Server - create a new tcp server.
@@ -83,11 +69,11 @@ func (t *tcpServer) Register(name string, method func(interface{}) []byte, getSt
 	if _, ok := t.procedures[name]; ok {
 		return errors.New("This procedure has already been registered")
 	}
-
 	t.procedures[name] = &procedure{
 		name:      name,
 		method:    method,
 		getStruct: getStruct,
+		schema:    gojsonschema.NewStringLoader(schemeRGB),
 	}
 	return nil
 }
@@ -95,13 +81,15 @@ func (t *tcpServer) Register(name string, method func(interface{}) []byte, getSt
 /*
 Start - start the server.
 */
-func (t *tcpServer) Start() {
-	go func() {
-		lstnr, err := net.ListenTCP(t.network, t.addr)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+func (t *tcpServer) Start() error {
+	lstnr, err := net.ListenTCP(t.network, t.addr)
+	if err != nil {
+		//log.Fatalln(err)
+		return err
+	}
+
+	go func(lstnr *net.TCPListener) {
+
 		defer lstnr.Close()
 
 		for {
@@ -113,7 +101,10 @@ func (t *tcpServer) Start() {
 			t.handle(con)
 		}
 
-	}()
+	}(lstnr)
+
+	time.Sleep(10 * time.Millisecond)
+	return nil
 }
 
 func main() {
@@ -143,15 +134,30 @@ func main() {
 	//fmt.Println("------------------------------------------------------------")
 	//fmt.Println("------------------------------------------------------------")
 
-	var msg = []byte(`[
-		{"Method": "YCbCr", "Query": {"Y": 255, "Cb": 0, "Cr": -10}},
-		{"Method": "RGB",   "Query": {"R": 98, "G": 218, "B": 255, "X":0}}
-	]`)
+	//var msg = []byte(`[
+	//	{"Method": "YCbCr", "Query": {"Y": 255, "Cb": 0, "Cr": -10}},
+	//	{"Method": "RGB",   "Query": {"R": 98, "G": 218, "B": 255, "X":0}}
+	//]`)
+
+	//inRGB := `{"R": 98, "G": 218, "B": 255, "X":0}`
+
+	//msg := []byte(`{"Method": "YCbCr", "Query": {"Y": 255, "Cb": 0, "Cr": -10}}`)
+	msg2 := []byte(`{"Method": "RGB",   "Query": {"R": 98, "G": 218, "B": 255, "k": 6}}`)
+	//msg3 := []byte(`{"Method": "RGB",   "Query":` + inRGB + `}`)
+	//time.Sleep(10 * time.Millisecond)
 
 	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
-	c.Send(msg)
 
-	//time.Sleep(1 * time.Second)
+	/*
+		reply, err := c.Send(msg)
+		fmt.Println("_APP_get1: ", reply, err)
+		reply2, err2 := c.Send(msg2)
+		fmt.Println("_APP_get2: ", reply2, err2)
+	*/
+	reply3, err3 := c.Send(msg2)
+	fmt.Println("_APP_get3: ", reply3, err3)
+
+	//
 }
 
 /*
@@ -161,4 +167,16 @@ type procedure struct {
 	name      string
 	method    func(interface{}) []byte
 	getStruct func() interface{}
+	schema    gojsonschema.JSONLoader
 }
+
+var schemeRGB string = `{
+	"additionalProperties":false,
+	"properties": {
+		"R": {"type": "integer"},
+		"G": {"type": "integer"},
+		"B": {"type": "integer"},
+		"X": {"type": "integer"}
+	},
+	"required": ["R", "G", "B", "X"]
+}`

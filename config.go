@@ -9,6 +9,7 @@ import (
 )
 
 type networkType string
+type errCode byte
 
 const deadline time.Duration = 100 * time.Millisecond // millisecond
 const bufSize int = 1024
@@ -18,4 +19,16 @@ const (
 	NetworkTsp  networkType = "tcp"
 	NetworkTsp4 networkType = "tcp4"
 	NetworkTsp6 networkType = "tcp6"
+)
+
+// Reply codes
+const (
+	Ok byte = iota
+	Err
+	ErrUnmarshal
+	ErrUnregistered
+	ErrDial
+	ErrSendingMsg
+	ErrGettingMsg
+	ErrOther
 )
