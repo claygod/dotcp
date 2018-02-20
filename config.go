@@ -11,7 +11,7 @@ type errCode byte
 // const startPause int = 100
 const bufSize int = 1024
 const portsLimitMax int = 65535
-const portsLimitMin int = 0
+const portsLimitMin int = 0 // 49152
 
 // The network must be a TCP network name
 const (

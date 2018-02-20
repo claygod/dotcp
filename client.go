@@ -5,7 +5,7 @@ package dotcp
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 import (
 	"errors"
-	//"fmt"
+	"fmt"
 	"net"
 )
 
@@ -59,20 +59,20 @@ func (t *tspClient) Send(msg []byte) ([]byte, error) {
 
 	c, err := net.Dial(t.network, t.addr.String())
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("Error dial: %v; ", err)
 	}
 	defer c.Close()
-	// послать сообщение
 
+	// send message
 	n, err := c.Write(msg)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("Error write: %v; ", err)
 	}
 	if n != len(msg) {
 		return []byte{}, errors.New("The message has not been sent in full")
 	}
 
-	// получение сообщения
+	// receiving a message
 	buf := make([]byte, 0)
 
 	for {
@@ -84,7 +84,8 @@ func (t *tspClient) Send(msg []byte) ([]byte, error) {
 			break
 		}
 	}
-	// Анализ полученноего сообщения
+	// analysis of the received message
+	//fmt.Println(buf)
 	if buf[0] == reOk {
 		return buf[1:], nil
 	}

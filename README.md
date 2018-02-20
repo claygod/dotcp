@@ -1,5 +1,7 @@
 # DoTCP
 
+[![API documentation](https://godoc.org/github.com/claygod/dotcp?status.svg)](https://godoc.org/github.com/claygod/dotcp)
+[![Go Report Card](https://goreportcard.com/badge/github.com/claygod/dotcp)](https://goreportcard.com/report/github.com/claygod/dotcp)
 
 TCP server with RPC mode for JSON. Coverage 80.0%
 
@@ -20,26 +22,40 @@ The library has two main entities: a server and an client.
 
 Blah-blah Blah-blah
 
-### Example
+## Example
 
 ```go
-	s := Server(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+import (
+	"fmt"
+	"net"
+
+	"github.com/claygod/dotcp"
+)
+
+func main() {
+	fmt.Println("Begin app")
+
+	s := dotcp.Server(dotcp.NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
 	s.Register("handleArticle", handleArticle, newArticle, schemeArticle)
 	s.Start()
 
-	msg := []byte(`{"method": "handleArticle", "query": {"id": 777, "text": "Blah-blah"}}`)
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	msg := []byte(`{"method": "handleArticle", "query": {"id": 777, "text": "Hello world!"}}`)
+	c := dotcp.Client(dotcp.NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+
 	res, err := c.Send(msg)
+
 	if err != nil {
 		// error handling
+		fmt.Println(err)
+	} else {
+		fmt.Println("Server response:", string(res))
 	}
-	if len(res) != 3 || res[0] != 77 {
-		t.Error(res)
-		t.Error("The handler returned incorrect data")
-	}
+
+	fmt.Println("End app")
+}
 ```	
 
-### Struct (Example)
+### Struct (for example)
 
 Blah-blah
 
@@ -50,7 +66,7 @@ type Article struct {
 }
 ```	
 
-### New struct (Example)
+### New struct (for example)
 
 Blah-blah
 
@@ -60,7 +76,7 @@ func newArticle() interface{} {
 }
 ```
 
-### Scheme (Example)
+### Scheme (for example)
 
 Blah-blah
 
@@ -75,7 +91,7 @@ var schemeArticle string = `{
 }`
 ```
 
-### Handle (Example)
+### Handle (for example)
 
 Blah-blah
 
@@ -89,17 +105,16 @@ func handleArticle(d interface{}) []byte {
 
 ## API
 
-- New
-- Load ("path")
-- Start ()
-- AddUnit(ID)
-- Begin().Debit(ID, key, amount).End()
-- Begin().Credit(ID, key, amount).End()
-- TotalUnit(ID)
-- TotalAccount(ID, key)
-- DelUnit(ID)
-- Stop ()
-- Save ("path")
+- Server()
+- Server.IP()
+- Server.Port()
+- Server.Zone()
+- Server.Register()
+- Client()
+- Client.IP()
+- Client.Port()
+- Client.Zone()
+- Client.Send()
 
 ## F.A.Q.
 
@@ -111,20 +126,12 @@ Blah-blah?
 
 ## ToDo
 
-- [x] Blah-blah
+- [x] API
 - [ ] More tests
 
 ## Bench
 
-i7-6700T:
+i3-5005U:
 
-- BenchmarkTotalUnitSequence-8        	 3000000	       419 ns/op
-- BenchmarkTotalUnitParallel-8        	10000000	       185 ns/op
-- BenchmarkCreditSequence-8           	 5000000	       311 ns/op
-- BenchmarkCreditParallel-8           	10000000	       175 ns/op
-- BenchmarkDebitSequence-8            	 5000000	       314 ns/op
-- BenchmarkDebitParallel-8            	10000000	       178 ns/op
-- BenchmarkTransferSequence-8         	 3000000	       417 ns/op
-- BenchmarkTransferParallel-8         	 5000000	       277 ns/op
-- BenchmarkBuySequence-8              	 2000000	       644 ns/op
-- BenchmarkBuyParallel-8              	 5000000	       354 ns/op
+- BenchmarkSequence-2   	   50000	     32839 ns/op
+- BenchmarkParallel-2   	  100000	     15691 ns/op

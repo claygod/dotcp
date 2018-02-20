@@ -10,7 +10,7 @@ import (
 )
 
 var ip net.IP = net.IPv4(127, 0, 0, 1)
-var port int = 9999
+var port int = 49001
 
 func TestCreateServer(t *testing.T) {
 	s := Server(NetworkTsp)
@@ -19,14 +19,28 @@ func TestCreateServer(t *testing.T) {
 	}
 }
 
-func TestMethodTrue(t *testing.T) {
+func TestMethodTrue1(t *testing.T) {
 
-	s := Server(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	s := Server(NetworkTsp).IP(ip).Port(port)
 	s.Register("handleArticle", handleArticle, newArticle, schemeArticle)
 	s.Start()
 
 	msg := []byte(`{"method": "handleArticle", "query": {"id": 777, "text": "Blah-blah"}}`)
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	c := Client(NetworkTsp).IP(ip).Port(port)
+	res, err := c.Send(msg)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(res) != 3 || res[0] != 77 {
+		t.Error(res)
+		t.Error("The handler returned incorrect data")
+	}
+}
+
+func TestMethodTrue2(t *testing.T) {
+
+	c := initServerClient(ip, port)
+	msg := []byte(`{"method": "handleArticle", "query": {"id": 777, "text": "Blah-blah"}}`)
 	res, err := c.Send(msg)
 	if err != nil {
 		t.Error(err)
@@ -104,7 +118,7 @@ func TestPortDiscrepancy(t *testing.T) {
 	initServerClient(ip, port)
 	msg := []byte(`{"method": "handleArticle", "query": {"id": 7, "text": "Blah-blah"}}`)
 
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9998)
+	c := Client(NetworkTsp).IP(ip).Port(port + 1)
 
 	if _, err := c.Send(msg); err == nil {
 		t.Error(err)
@@ -115,7 +129,7 @@ func TestPortMin(t *testing.T) {
 	initServerClient(ip, port)
 	msg := []byte(`{"method": "handleArticle", "query": {"id": 7, "text": "Blah-blah"}}`)
 
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(portsLimitMin - 1)
+	c := Client(NetworkTsp).IP(ip).Port(portsLimitMin - 1)
 
 	if _, err := c.Send(msg); err == nil {
 		t.Error(err)
@@ -126,7 +140,7 @@ func TestPortMax(t *testing.T) {
 	initServerClient(ip, port)
 	msg := []byte(`{"method": "handleArticle", "query": {"id": 7, "text": "Blah-blah"}}`)
 
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(portsLimitMax + 1)
+	c := Client(NetworkTsp).IP(ip).Port(portsLimitMax + 1)
 
 	if _, err := c.Send(msg); err == nil {
 		t.Error(err)
@@ -137,7 +151,7 @@ func TestIp(t *testing.T) {
 	initServerClient(ip, port)
 	msg := []byte(`{"method": "handleArticle", "query": {"id": 7, "text": "Blah-blah"}}`)
 
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 2)).Port(9999)
+	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 2)).Port(port)
 
 	if _, err := c.Send(msg); err == nil {
 		t.Error(err)
@@ -145,7 +159,7 @@ func TestIp(t *testing.T) {
 }
 
 func TestRegister(t *testing.T) {
-	s := Server(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	s := Server(NetworkTsp).IP(ip).Port(port)
 
 	if s.Register("handleArticle", handleArticle, newArticle, schemeArticle) != nil {
 		t.Error("Registration error")
@@ -153,7 +167,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestReRegister(t *testing.T) {
-	s := Server(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	s := Server(NetworkTsp).IP(ip).Port(port)
 	s.Register("handleArticle", handleArticle, newArticle, schemeArticle)
 
 	if s.Register("handleArticle", handleArticle, newArticle, schemeArticle) == nil {
@@ -161,11 +175,45 @@ func TestReRegister(t *testing.T) {
 	}
 }
 
+func BenchmarkSequence(b *testing.B) {
+	b.StopTimer()
+	s := Server(NetworkTsp).IP(ip).Port(port + 1)
+	s.Register("handleArticle", handleArticle, newArticle, schemeArticle)
+	c := Client(NetworkTsp).IP(ip).Port(port + 1)
+	msg := []byte(`{"method": "handleArticle", "query": {"id": 7, "text": "Blah-blah"}}`)
+	//u := 0
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		c.Send(msg)
+	}
+}
+
+func BenchmarkParallel(b *testing.B) {
+	b.StopTimer()
+
+	s := Server(NetworkTsp).IP(ip).Port(port + 2)
+	s.Register("handleArticle", handleArticle, newArticle, schemeArticle)
+	var clients [256]*tspClient
+	for i := 0; i < 256; i++ {
+		clients[uint8(i)] = Client(NetworkTsp).IP(ip).Port(port + 2)
+	}
+	msg := []byte(`{"method": "handleArticle", "query": {"id": 7, "text": "Blah-blah"}}`)
+
+	var u uint8 = 0
+	b.StartTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			clients[u].Send(msg)
+			u++
+		}
+	})
+}
+
 func initServerClient(ip net.IP, port int) *tspClient { // (*tcpServer,
-	s := Server(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	s := Server(NetworkTsp).IP(ip).Port(port)
 	s.Register("handleArticle", handleArticle, newArticle, schemeArticle)
 	s.Start()
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
+	c := Client(NetworkTsp).IP(ip).Port(port)
 	return c
 }
 
