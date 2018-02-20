@@ -1,18 +1,17 @@
-package main
+package dotcp
 
 // Do TCP
 // Config
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 
-import (
-	"time"
-)
-
 type networkType string
 type errCode byte
 
-const deadline time.Duration = 100 * time.Millisecond // millisecond
+// const deadline time.Duration = 100 * time.Millisecond // millisecond
+// const startPause int = 100
 const bufSize int = 1024
+const portsLimitMax int = 65535
+const portsLimitMin int = 0
 
 // The network must be a TCP network name
 const (
@@ -23,12 +22,6 @@ const (
 
 // Reply codes
 const (
-	Ok byte = iota
-	Err
-	ErrUnmarshal
-	ErrUnregistered
-	ErrDial
-	ErrSendingMsg
-	ErrGettingMsg
-	ErrOther
+	reOk byte = iota
+	reError
 )

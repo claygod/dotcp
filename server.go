@@ -1,18 +1,14 @@
-package main
+package dotcp
 
 // Do TCP
 // Server
 // Copyright © 2018 Eduard Sesigin. All rights reserved. Contacts: <claygod@yandex.ru>
 import (
-	//"encoding/json"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
-	//"strconv"
-	//"bufio"
-	"errors"
-	//"os"
-	"time"
 
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -29,7 +25,7 @@ type tcpServer struct {
 /*
 Server - create a new tcp server.
 */
-func Server(network networkType) *tcpServer { // TCPAddr
+func Server(network networkType) *tcpServer {
 	ts := &tcpServer{
 		network:    string(network),
 		addr:       new(net.TCPAddr),
@@ -40,6 +36,9 @@ func Server(network networkType) *tcpServer { // TCPAddr
 
 /*
 IP - set IP.
+An IP is a single IP address, a slice of bytes.
+Functions in this package accept either 4-byte
+(IPv4) or 16-byte (IPv6) slices as input.
 */
 func (t *tcpServer) IP(ip net.IP) *tcpServer {
 	t.addr.IP = ip
@@ -48,6 +47,7 @@ func (t *tcpServer) IP(ip net.IP) *tcpServer {
 
 /*
 Port - set Port.
+0 - 65535
 */
 func (t *tcpServer) Port(port int) *tcpServer {
 	t.addr.Port = port
@@ -56,6 +56,7 @@ func (t *tcpServer) Port(port int) *tcpServer {
 
 /*
 Zone - set Zone.
+IPv6 scoped addressing zone
 */
 func (t *tcpServer) Zone(zone string) *tcpServer {
 	t.addr.Zone = zone
@@ -65,7 +66,7 @@ func (t *tcpServer) Zone(zone string) *tcpServer {
 /*
 Register - register handler.
 */
-func (t *tcpServer) Register(name string, method func(interface{}) []byte, getStruct func() interface{}) error {
+func (t *tcpServer) Register(name string, method func(interface{}) []byte, getStruct func() interface{}, scheme string) error {
 	if _, ok := t.procedures[name]; ok {
 		return errors.New("This procedure has already been registered")
 	}
@@ -73,7 +74,7 @@ func (t *tcpServer) Register(name string, method func(interface{}) []byte, getSt
 		name:      name,
 		method:    method,
 		getStruct: getStruct,
-		schema:    gojsonschema.NewStringLoader(schemeRGB),
+		schema:    gojsonschema.NewStringLoader(scheme),
 	}
 	return nil
 }
@@ -82,9 +83,11 @@ func (t *tcpServer) Register(name string, method func(interface{}) []byte, getSt
 Start - start the server.
 */
 func (t *tcpServer) Start() error {
+	if t.addr.Port > portsLimitMax || t.addr.Port < portsLimitMin {
+		return errors.New("Uncorrect port")
+	}
 	lstnr, err := net.ListenTCP(t.network, t.addr)
 	if err != nil {
-		//log.Fatalln(err)
 		return err
 	}
 
@@ -103,80 +106,74 @@ func (t *tcpServer) Start() error {
 
 	}(lstnr)
 
-	time.Sleep(10 * time.Millisecond)
+	//time.Sleep(startPause * time.Millisecond)
 	return nil
 }
 
-func main() {
-
-	//addr := &net.TCPAddr{
-	//	IP:   net.IPv4(127, 0, 0, 1), // use net.ParseCIDR for string
-	//	Port: 9999,
-	//	Zone: "", // IPv6 scoped addressing zone
-	//}
-	//s := newTcpServer(NetworkTsp, addr)
-	//if s == nil {
-	//	log.Fatalf("Server not started")
-	//	return
-	//}
-	s := Server(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
-
-	s.Register("RGB", dummy1, newRGB)
-	s.Register("YCbCr", dummy2, newYCbCr)
-
-	s.Start()
-
-	fmt.Println(s.addr.String())
-
-	//fmt.Println("Start")
-
-	//client7()
-	//fmt.Println("------------------------------------------------------------")
-	//fmt.Println("------------------------------------------------------------")
-
-	//var msg = []byte(`[
-	//	{"Method": "YCbCr", "Query": {"Y": 255, "Cb": 0, "Cr": -10}},
-	//	{"Method": "RGB",   "Query": {"R": 98, "G": 218, "B": 255, "X":0}}
-	//]`)
-
-	//inRGB := `{"R": 98, "G": 218, "B": 255, "X":0}`
-
-	//msg := []byte(`{"Method": "YCbCr", "Query": {"Y": 255, "Cb": 0, "Cr": -10}}`)
-	msg2 := []byte(`{"Method": "RGB",   "Query": {"R": 98, "G": 218, "B": 255, "k": 6}}`)
-	//msg3 := []byte(`{"Method": "RGB",   "Query":` + inRGB + `}`)
-	//time.Sleep(10 * time.Millisecond)
-
-	c := Client(NetworkTsp).IP(net.IPv4(127, 0, 0, 1)).Port(9999)
-
-	/*
-		reply, err := c.Send(msg)
-		fmt.Println("_APP_get1: ", reply, err)
-		reply2, err2 := c.Send(msg2)
-		fmt.Println("_APP_get2: ", reply2, err2)
-	*/
-	reply3, err3 := c.Send(msg2)
-	fmt.Println("_APP_get3: ", reply3, err3)
-
-	//
-}
-
 /*
-procedure - stores the called function and the structure for the marshaling.
+handle - processing request.
 */
-type procedure struct {
-	name      string
-	method    func(interface{}) []byte
-	getStruct func() interface{}
-	schema    gojsonschema.JSONLoader
-}
+func (t *tcpServer) handle(c net.Conn) {
+	reply := make([]byte, 1)
+	buf := make([]byte, 0)
 
-var schemeRGB string = `{
-	"additionalProperties":false,
-	"properties": {
-		"R": {"type": "integer"},
-		"G": {"type": "integer"},
-		"B": {"type": "integer"},
-		"X": {"type": "integer"}
-	},
-	"required": ["R", "G", "B", "X"]
-}`
+	// load msg
+	for {
+		xx := make([]byte, bufSize)
+		res, err := c.Read(xx)
+		buf = append(buf, xx[:res]...)
+		if err != nil || res < bufSize {
+			break
+		}
+	}
+
+	var b Box
+	err := json.Unmarshal(buf, &b)
+	if err != nil {
+		reply[0] = reError
+		reply = append(reply, []byte(err.Error())...)
+		goto sendReply
+	}
+	if p, ok := t.procedures[b.Method]; ok {
+		doc := gojsonschema.NewBytesLoader(b.Query)
+		result, err := gojsonschema.Validate(p.schema, doc)
+
+		if err != nil {
+			reply[0] = reError
+			reply = append(reply, []byte(err.Error())...)
+			goto sendReply
+		}
+		if !result.Valid() {
+			var errStr string
+			for _, desc := range result.Errors() {
+				errStr = fmt.Sprintf("%s %v; ", errStr, desc)
+			}
+			reply[0] = reError
+			reply = append(reply, []byte(errStr)...)
+			goto sendReply
+		}
+
+		if err != nil {
+			reply[0] = reError
+			reply = append(reply, []byte(err.Error())...)
+			goto sendReply
+		}
+
+		dst := p.getStruct()
+
+		if err := json.Unmarshal(b.Query, dst); err != nil {
+			reply[0] = reError
+			reply = append(reply, []byte(err.Error())...)
+		} else {
+			reply[0] = reOk
+			reply = append(reply, p.method(dst)...)
+		}
+		goto sendReply
+	} else {
+		reply[0] = reError
+		reply = append(reply, []byte("No procedure")...)
+		goto sendReply
+	}
+sendReply:
+	c.Write(reply)
+}
