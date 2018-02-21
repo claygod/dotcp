@@ -3,7 +3,7 @@
 [![API documentation](https://godoc.org/github.com/claygod/dotcp?status.svg)](https://godoc.org/github.com/claygod/dotcp)
 [![Go Report Card](https://goreportcard.com/badge/github.com/claygod/dotcp)](https://goreportcard.com/report/github.com/claygod/dotcp)
 
-TCP server with RPC mode for JSON. Coverage 80.0%
+TCP server with RPC mode for JSON. Coverage 83.5%
 
 TCH server for the exchange of JSON dates. Before starting the server, the procedures are registered, which will then be called in a RPC style. The server validates the received data.
 
@@ -20,7 +20,7 @@ The library has two main entities: a server and an client.
 
 ## Usage
 
-Blah-blah Blah-blah
+When using the server, the correct port number is important.
 
 ## Example
 
@@ -57,7 +57,6 @@ func main() {
 
 ### Struct (for example)
 
-Blah-blah
 
 ```go
 type Article struct {
@@ -68,7 +67,6 @@ type Article struct {
 
 ### New struct (for example)
 
-Blah-blah
 
 ```go
 func newArticle() interface{} {
@@ -78,7 +76,6 @@ func newArticle() interface{} {
 
 ### Scheme (for example)
 
-Blah-blah
 
 ```go
 var schemeArticle string = `{
@@ -118,20 +115,23 @@ func handleArticle(d interface{}) []byte {
 
 ## F.A.Q.
 
-Blah-blah
-- Blah-blah
+Why is your server slower than the standard TCP server?
+- For the RPC-realization a JSON is used. The operation of unmarshalling is slow. In addition, the JSON should be validated. This is necessary for safety.
 
-Blah-blah?
-- Blah-blah
+Which ports are best to use?
+- This should be asked from the administrator)) Ports that are used dynamically: 49152 - 65535. Read more on [WiKi](https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers)
 
 ## ToDo
 
 - [x] API
-- [ ] More tests
+- [x] add example
+- [x] F.A.Q.
+- [ ] increase coverage
+- [ ] more tests
 
 ## Bench
 
-i3-5005U:
+i3-5005U (2.0 GHz):
 
-- BenchmarkSequence-2   	   50000	     32839 ns/op
-- BenchmarkParallel-2   	  100000	     15691 ns/op
+- BenchmarkSequence-2   	   50000	     26403 ns/op
+- BenchmarkParallel-2   	  100000	     15819 ns/op

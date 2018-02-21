@@ -1,3 +1,10 @@
+/*
+TCP server with RPC mode for JSON.
+TCH server for the exchange of JSON dates. Before starting the server,
+the procedures are registered, which will then be called in a RPC style.
+The server validates the received data.
+*/
+
 package dotcp
 
 // Do TCP
